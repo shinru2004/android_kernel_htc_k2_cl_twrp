@@ -30,10 +30,7 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/block.h>
 
-#ifdef CONFIG_MMC_MUST_PREVENT_WP_VIOLATION
-#include <linux/mmc/card.h>
-#include <mach/board.h>
-#endif	
+	
 
 #include "blk.h"
 
@@ -1106,27 +1103,10 @@ generic_make_request_checks(struct bio *bio)
 	int err = -EIO;
 	char b[BDEVNAME_SIZE];
 	struct hd_struct *part;
-#ifdef CONFIG_MMC_MUST_PREVENT_WP_VIOLATION
-	char wp_prevention_partno[64];
-#endif
+
 
 	might_sleep();
 
-#ifdef CONFIG_MMC_MUST_PREVENT_WP_VIOLATION
-		mmc_blk_get_wp_prevention_partno(&wp_prevention_partno[0]);
-		if (!strcmp(bdevname(bio->bi_bdev, b), wp_prevention_partno) && !board_mfg_mode() &&
-			get_mmc0_write_protection_type() && (bio->bi_rw & WRITE)) {
-			pr_info("%s: Attempt to write protected eMMC, %s block %Lu \n", __func__,
-				bdevname(bio->bi_bdev, b), (unsigned long long)bio->bi_sector);
-			err = 0;
-			goto wp_end_io;
-		} else if (atomic_read(&emmc_reboot) && (bio->bi_rw & WRITE)) {
-			pr_info("%s: Attempt to write eMMC, %s block %Lu \n", current->comm,
-				bdevname(bio->bi_bdev, b), (unsigned long long)bio->bi_sector);
-			err = -EROFS;
-			goto wp_end_io;
-		}
-#endif
 
 	if (bio_check_eod(bio, nr_sectors))
 		goto end_io;
@@ -1198,11 +1178,7 @@ end_io:
 	bio_endio(bio, err);
 	return false;
 
-#ifdef CONFIG_MMC_MUST_PREVENT_WP_VIOLATION
-wp_end_io:
-	bio_endio(bio, err);
-	return 0;
-#endif
+
 }
 
 void generic_make_request(struct bio *bio)
